@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useId, useState } from 'react';
+import { Suspense, useId, useState } from 'react';
 import { useAuth } from '@/app/providers';
 import { resolvePostLoginPath } from '@/lib/auth-redirect';
 import { Button } from '@/components/ui/Button';
@@ -107,7 +107,7 @@ function PasswordField({
   );
 }
 
-export default function InscriptionPage() {
+function InscriptionPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { loginWithToken } = useAuth();
@@ -418,5 +418,19 @@ export default function InscriptionPage() {
         </Card>
       </div>
     </div>
+  );
+}
+
+export default function InscriptionPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-[60vh] items-center justify-center text-sm text-slate-500">
+          Chargement…
+        </div>
+      }
+    >
+      <InscriptionPageContent />
+    </Suspense>
   );
 }

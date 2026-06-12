@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useState } from 'react';
+import { Suspense, useState } from 'react';
 import { useAuth } from '@/app/providers';
 import { resolvePostLoginPath } from '@/lib/auth-redirect';
 import { Button } from '@/components/ui/Button';
@@ -15,7 +15,7 @@ import { useToastFeedback } from '@/hooks/useToastFeedback';
 const field =
   'mt-1.5 w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-slate-900 shadow-sm transition placeholder:text-slate-400 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/25';
 
-export default function ConnexionPage() {
+function ConnexionPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { loginWithToken } = useAuth();
@@ -138,5 +138,19 @@ export default function ConnexionPage() {
         </Card>
       </div>
     </div>
+  );
+}
+
+export default function ConnexionPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-[60vh] items-center justify-center text-sm text-slate-500">
+          Chargement…
+        </div>
+      }
+    >
+      <ConnexionPageContent />
+    </Suspense>
   );
 }

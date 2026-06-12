@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Calendar,
   CalendarCheck,
@@ -135,7 +135,7 @@ function SectionIcon({ icon: Icon }: { icon: LucideIcon }) {
   );
 }
 
-export default function CommandesPage() {
+function CommandesPageContent() {
   const searchParams = useSearchParams();
   const { token, user } = useAuth();
   const [orders, setOrders] = useState<OrderRow[] | undefined>(undefined);
@@ -849,5 +849,19 @@ export default function CommandesPage() {
         </Card>
       )}
     </div>
+  );
+}
+
+export default function CommandesPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-[40vh] items-center justify-center text-sm text-slate-500">
+          Chargement…
+        </div>
+      }
+    >
+      <CommandesPageContent />
+    </Suspense>
   );
 }
