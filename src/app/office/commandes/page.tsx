@@ -32,6 +32,7 @@ import { apiFetch } from '@/lib/api/client';
 import {
   buildPageQuery,
   DEFAULT_PAGE_SIZE,
+  fetchAllPaginatedItems,
   parsePaginatedResponse,
   type PaginationMeta,
 } from '@/lib/pagination';
@@ -167,6 +168,8 @@ function CommandesPageContent() {
     useState<ClientLocationValue>(EMPTY_CLIENT_LOCATION);
 
   const [clients, setClients] = useState<Client[]>([]);
+  const [clientsLoading, setClientsLoading] = useState(false);
+  const [clientsLoadError, setClientsLoadError] = useState<string | null>(null);
   const [zones, setZones] = useState<Zone[]>([]);
   const [services, setServices] = useState<Service[]>([]);
   const [analyses, setAnalyses] = useState<Analyse[]>([]);
@@ -236,20 +239,40 @@ function CommandesPageContent() {
     if (presetZone) setZoneId(presetZone);
   }, [searchParams]);
 
+  const loadClients = useCallback(async () => {
+    if (!token || !isStaffAdmin(user?.role)) {
+      return;
+    }
+    setClientsLoading(true);
+    setClientsLoadError(null);
+    try {
+      const list = await fetchAllPaginatedItems<Client>((page, limit) =>
+        apiFetch(
+          `/users${buildPageQuery({
+            role: 'client',
+            active: true,
+            page,
+            limit,
+          })}`,
+          { method: 'GET', token },
+        ),
+      );
+      setClients(list);
+    } catch {
+      setClients([]);
+      setClientsLoadError('Impossible de charger la liste des clients.');
+    } finally {
+      setClientsLoading(false);
+    }
+  }, [token, user?.role]);
+
   useEffect(() => {
     if (!token || !showCreateForm) return;
-    
+
     queueMicrotask(async () => {
       try {
         if (isStaffAdmin(user?.role)) {
-          const resClients = await apiFetch(
-            '/users?role=client&limit=500',
-            { method: 'GET', token },
-          );
-          if (resClients.ok) {
-            const dataClients = await parsePaginatedResponse<Client>(resClients);
-            setClients(dataClients.items);
-          }
+          await loadClients();
         }
 
         const resZones = await fetch(`${publicApiUrl()}/zones`);
@@ -273,7 +296,7 @@ function CommandesPageContent() {
         console.error('Erreur chargement entités:', err);
       }
     });
-  }, [token, showCreateForm, user?.role]);
+  }, [token, showCreateForm, user?.role, loadClients]);
 
   useToastFeedback(error ?? formError, formSuccess);
 
@@ -285,7 +308,11 @@ function CommandesPageContent() {
       setFormError('Veuillez sélectionner un service.');
       return;
     }
-    
+    if (!zoneId) {
+      setFormError('Veuillez sélectionner la zone du client.');
+      return;
+    }
+
     setFormBusy(true);
     setFormError(null);
     setFormSuccess(null);
@@ -296,7 +323,7 @@ function CommandesPageContent() {
       if (isStaffAdmin(user?.role) && clientId) {
         payload.clientId = clientId;
       }
-      if (zoneId) payload.zoneId = zoneId;
+      payload.zoneId = zoneId;
       if (clientLocation.address.trim()) {
         payload.clientAddress = clientLocation.address.trim();
       }
@@ -476,23 +503,47 @@ function CommandesPageContent() {
 
               {isStaffAdmin(user?.role) && (
                 <div>
-                  <FieldLabel icon={User}>Client</FieldLabel>
+                  <div className="flex items-center justify-between gap-2">
+                    <FieldLabel icon={User}>Client</FieldLabel>
+                    <button
+                      type="button"
+                      className="inline-flex items-center gap-1 text-xs font-medium text-teal-700 hover:text-teal-900 disabled:opacity-50"
+                      disabled={clientsLoading || formBusy}
+                      onClick={() => void loadClients()}
+                    >
+                      <RefreshCw
+                        className={`h-3.5 w-3.5 ${clientsLoading ? 'animate-spin' : ''}`}
+                        aria-hidden
+                      />
+                      Actualiser
+                    </button>
+                  </div>
                   <select
                     className={adminFieldClass}
                     value={clientId}
                     onChange={(e) => setClientId(e.target.value)}
                     required
+                    disabled={clientsLoading || formBusy}
                   >
-                    <option value="">-- Sélectionner un client --</option>
+                    <option value="">
+                      {clientsLoading
+                        ? 'Chargement des clients…'
+                        : '-- Sélectionner un client --'}
+                    </option>
                     {clients.map((c) => (
                       <option key={c.id} value={c.id}>
                         {c.firstName} {c.lastName} ({c.email})
                       </option>
                     ))}
                   </select>
-                  <p className="mt-1 text-xs text-slate-500">
-                    Pour un administrateur, le client est obligatoire
-                  </p>
+                  {clientsLoadError ? (
+                    <p className="mt-1 text-xs text-red-600">{clientsLoadError}</p>
+                  ) : (
+                    <p className="mt-1 text-xs text-slate-500">
+                      {clients.length} client{clients.length !== 1 ? 's' : ''} actif
+                      {clients.length !== 1 ? 's' : ''} — obligatoire pour le personnel
+                    </p>
+                  )}
                 </div>
               )}
 
@@ -501,17 +552,18 @@ function CommandesPageContent() {
                   <div>
                     <FieldLabel icon={MapPin}>Localisation du client (optionnel)</FieldLabel>
                     <p className="mt-1 text-xs text-slate-500">
-                      Adresse, carte et repère pour le point de prélèvement.
+                      Indication d’adresse, carte et repère pour le point de prélèvement.
                     </p>
                   </div>
                   <div>
-                    <FieldLabel icon={MapPin}>Zone du client (optionnel)</FieldLabel>
+                    <FieldLabel icon={MapPin}>Zone du client</FieldLabel>
                     <select
                       className={adminFieldClass}
                       value={zoneId}
                       onChange={(e) => setZoneId(e.target.value)}
+                      required
                     >
-                      <option value="">-- Aucune zone --</option>
+                      <option value="">-- Sélectionner une zone --</option>
                       {zones.map((z) => (
                         <option key={z.id} value={z.id}>
                           {z.name} {z.code ? `(${z.code})` : ''}
@@ -519,7 +571,7 @@ function CommandesPageContent() {
                       ))}
                     </select>
                     <p className="mt-1 text-xs text-slate-500">
-                      Secteur pour le calcul des frais de trajet. Complément de la localisation sur la carte.
+                      Obligatoire — secteur du client pour le calcul des frais de trajet.
                     </p>
                   </div>
                 </div>

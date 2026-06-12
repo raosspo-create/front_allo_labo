@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { BilanAttachmentPreviewCard } from '@/components/office/BilanAttachmentPreviewCard';
 import { apiFetch } from '@/lib/api/client';
-import { parsePaginatedResponse } from '@/lib/pagination';
+import { fetchAllPaginatedItems } from '@/lib/pagination';
 import { apiErrorMessage, getNetworkErrorMessage } from '@/lib/api-errors';
 import { serviceNameIndicatesBilan } from '@/lib/bilan-service';
 import { publicApiUrl } from '@/lib/env';
@@ -567,14 +567,15 @@ export default function CommandeDetailPage() {
       async function loadTechnicians() {
         if (!loadTechList) return;
         try {
-          const usersRes = await apiFetch(
-            '/users?limit=500',
-            { method: 'GET', token },
+          const users = await fetchAllPaginatedItems<User>((page, limit) =>
+            apiFetch(`/users?page=${page}&limit=${limit}`, {
+              method: 'GET',
+              token,
+            }),
           );
-          if (cancelled || !usersRes.ok) return;
-          const users = await parsePaginatedResponse<User>(usersRes);
+          if (cancelled) return;
           setTechnicians(
-            users.items.filter((u) => u.role === 'technicien' || u.role === 'coursier'),
+            users.filter((u) => u.role === 'technicien' || u.role === 'coursier'),
           );
         } catch (err) {
           console.error('Impossible de charger les utilisateurs (techniciens):', err);

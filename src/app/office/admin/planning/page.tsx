@@ -10,7 +10,7 @@ import {
 } from '@/components/office/AppointmentCalendar';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/Card';
 import { apiFetch } from '@/lib/api/client';
-import { parsePaginatedResponse } from '@/lib/pagination';
+import { fetchAllPaginatedItems } from '@/lib/pagination';
 import { getNetworkErrorMessage } from '@/lib/api-errors';
 import { monthApiRange } from '@/lib/calendar-utils';
 import type { AppointmentEvent } from '@/lib/appointment-types';
@@ -38,11 +38,11 @@ export default function AdminPlanningPage() {
     if (!token) return;
     queueMicrotask(async () => {
       try {
-        const res = await apiFetch('/users?limit=500', { method: 'GET', token });
-        if (!res.ok) return;
-        const data = await parsePaginatedResponse<Agent>(res);
+        const users = await fetchAllPaginatedItems<Agent>((page, limit) =>
+          apiFetch(`/users?page=${page}&limit=${limit}`, { method: 'GET', token }),
+        );
         setAgents(
-          data.items.filter((u) => u.role === 'technicien' || u.role === 'coursier'),
+          users.filter((u) => u.role === 'technicien' || u.role === 'coursier'),
         );
       } catch {
         /* ignore */

@@ -144,7 +144,7 @@ export function ClientLocationPicker({
             Localisation du client (optionnel)
           </label>
           <p className="mt-1 text-xs text-slate-500">
-            Adresse, carte et repère pour le point de prélèvement.
+            Indication d’adresse, carte et repère pour le point de prélèvement.
           </p>
         </div>
       ) : null}
@@ -192,17 +192,20 @@ export function ClientLocationPicker({
 
       <div>
         <label className="mb-1 block text-xs font-medium text-slate-700" htmlFor="client-location-address">
-          Adresse ou repère
+          Indication d’adresse
         </label>
         <textarea
           id="client-location-address"
           className={`${adminFieldClass} min-h-[72px] resize-y`}
           value={value.address}
           onChange={(e) => onChange({ ...value, address: e.target.value })}
-          placeholder="Adresse, quartier, repère…"
+          placeholder="Ex. Quartier Cadjehoun, rue des Palmiers, maison bleue face à la pharmacie Sainte Marie"
           disabled={disabled}
           rows={2}
         />
+        <p className="mt-1 text-xs text-slate-500">
+          Précisez le quartier, la rue ou l’avenue et un repère visible pour faciliter l’accès du technicien.
+        </p>
       </div>
 
       <div className="flex flex-wrap gap-2">
@@ -212,7 +215,7 @@ export function ClientLocationPicker({
           onClick={() => void useMyLocation()}
           disabled={disabled || geoBusy}
         >
-          <Navigation className="h-4 w-4 shrink-0 text-teal-700" aria-hidden />
+          <MapPin className="h-3.5 w-3.5 shrink-0 text-teal-700" aria-hidden />
           {geoBusy ? 'Localisation…' : 'Utiliser ma position'}
         </button>
         {hasClientCoordinates(value) || value.address ? (

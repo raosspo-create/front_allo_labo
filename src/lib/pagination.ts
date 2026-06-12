@@ -13,6 +13,32 @@ export type PaginatedResponse<T> = {
 
 export const DEFAULT_PAGE_SIZE = 20;
 
+/** Plafond côté API Nest (`MAX_PAGE_SIZE`). */
+export const API_MAX_PAGE_SIZE = 100;
+
+/** Charge toutes les pages d'une liste paginée API. */
+export async function fetchAllPaginatedItems<T>(
+  fetchPage: (page: number, limit: number) => Promise<Response>,
+  limit = API_MAX_PAGE_SIZE,
+): Promise<T[]> {
+  const items: T[] = [];
+  let page = 1;
+  let totalPages = 1;
+
+  while (page <= totalPages) {
+    const res = await fetchPage(page, limit);
+    if (!res.ok) {
+      throw new Error(`HTTP ${res.status}`);
+    }
+    const data = await parsePaginatedResponse<T>(res);
+    items.push(...data.items);
+    totalPages = Math.max(1, data.meta.totalPages);
+    page += 1;
+  }
+
+  return items;
+}
+
 export function buildPageQuery(
   params: Record<string, string | number | boolean | undefined | null>,
 ): string {

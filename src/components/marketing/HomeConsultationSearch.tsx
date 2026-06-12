@@ -41,6 +41,10 @@ export function HomeConsultationSearch({ services, zones, compact = false }: Pro
       setError('Choisissez un type de consultation.');
       return;
     }
+    if (!zoneId) {
+      setError('Choisissez votre zone.');
+      return;
+    }
     const target = buildBookingPath();
     if (hydrated && user) {
       router.push(target);
@@ -100,10 +104,14 @@ export function HomeConsultationSearch({ services, zones, compact = false }: Pro
             <select
               id="home-zone"
               value={zoneId}
-              onChange={(e) => setZoneId(e.target.value)}
+              onChange={(e) => {
+                setZoneId(e.target.value);
+                setError(null);
+              }}
               className={compact ? fieldSelectGlass : fieldSelect}
+              required
             >
-              <option value="">Toutes</option>
+              <option value="">Choisir…</option>
               {zones.map((z) => (
                 <option key={z.id} value={z.id}>
                   {z.name}
