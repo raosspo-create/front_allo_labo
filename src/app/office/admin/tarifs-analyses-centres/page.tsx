@@ -28,6 +28,7 @@ import { apiFetch } from '@/lib/api/client';
 import {
   buildPageQuery,
   DEFAULT_PAGE_SIZE,
+  fetchAllPaginatedItems,
   parsePaginatedResponse,
   type PaginationMeta,
 } from '@/lib/pagination';
@@ -105,13 +106,35 @@ export default function AdminTarifsAnalysesCentresPage() {
 
   const loadAnalyses = useCallback(async () => {
     if (!token) return;
-    const res = await apiFetch(
-      `/analyses/admin${buildPageQuery({ page: 1, limit: 500 })}`,
-      { method: 'GET', token },
-    );
-    const data = await parsePaginatedResponse<Analyse>(res);
-    setAnalyses(data.items);
+    try {
+      const items = await fetchAllPaginatedItems<Analyse>((page, limit) =>
+        apiFetch(
+          `/analyses/admin${buildPageQuery({ page, limit })}`,
+          { method: 'GET', token },
+        ),
+      );
+      setAnalyses(items);
+    } catch {
+      setAnalyses([]);
+    }
   }, [token]);
+
+  const loadAllTariffRows = useCallback(
+    async (centreId?: string) => {
+      if (!token) return [] as Row[];
+      return fetchAllPaginatedItems<Row>((page, limit) =>
+        apiFetch(
+          `/centre-analyse-tariffs/admin${buildPageQuery({
+            page,
+            limit,
+            centreId: centreId || undefined,
+          })}`,
+          { method: 'GET', token },
+        ),
+      );
+    },
+    [token],
+  );
 
   useEffect(() => {
     queueMicrotask(() => void refresh());
@@ -160,20 +183,23 @@ export default function AdminTarifsAnalysesCentresPage() {
     queueMicrotask(async () => {
       setLoadingBulkTariffs(true);
       try {
-        const res = await apiFetch(
-          `/centre-analyse-tariffs/admin?centreId=${encodeURIComponent(bulkCentreId)}`,
-          { method: 'GET', token },
+        const allRows = await fetchAllPaginatedItems<Row>((page, limit) =>
+          apiFetch(
+            `/centre-analyse-tariffs/admin${buildPageQuery({
+              page,
+              limit,
+              centreId: bulkCentreId,
+            })}`,
+            { method: 'GET', token },
+          ),
         );
         if (cancelled) return;
-        const data = (await res.json().catch(() => [])) as Row[];
         const prices: Record<string, string> = {};
         const ids: Record<string, string> = {};
-        if (Array.isArray(data)) {
-          for (const row of data) {
-            if (row.analyse?.id) {
-              prices[row.analyse.id] = row.price;
-              ids[row.analyse.id] = row.id;
-            }
+        for (const row of allRows) {
+          if (row.analyse?.id) {
+            prices[row.analyse.id] = row.price;
+            ids[row.analyse.id] = row.id;
           }
         }
         setPriceByAnalyseId(prices);
@@ -228,19 +254,22 @@ export default function AdminTarifsAnalysesCentresPage() {
 
   async function loadExistingTariffMaps(centreId: string) {
     if (!token) return { prices: {}, ids: {} };
-    const res = await apiFetch(
-      `/centre-analyse-tariffs/admin?centreId=${encodeURIComponent(centreId)}`,
-      { method: 'GET', token },
+    const allRows = await fetchAllPaginatedItems<Row>((page, limit) =>
+      apiFetch(
+        `/centre-analyse-tariffs/admin${buildPageQuery({
+          page,
+          limit,
+          centreId,
+        })}`,
+        { method: 'GET', token },
+      ),
     );
-    const data = (await res.json().catch(() => [])) as Row[];
     const prices: Record<string, string> = {};
     const ids: Record<string, string> = {};
-    if (Array.isArray(data)) {
-      for (const row of data) {
-        if (row.analyse?.id) {
-          prices[row.analyse.id] = row.price;
-          ids[row.analyse.id] = row.id;
-        }
+    for (const row of allRows) {
+      if (row.analyse?.id) {
+        prices[row.analyse.id] = row.price;
+        ids[row.analyse.id] = row.id;
       }
     }
     return { prices, ids };
@@ -336,20 +365,30 @@ export default function AdminTarifsAnalysesCentresPage() {
     await refresh();
   }
 
-  function handleExportCsv() {
-    if (rows.length === 0) {
-      setErr('Aucun tarif à exporter pour la sélection actuelle.');
-      return;
+  async function handleExportCsv() {
+    if (!token) return;
+    setBusy(true);
+    setErr(null);
+    try {
+      const exportRows = await loadAllTariffRows(filterCentreId || undefined);
+      if (exportRows.length === 0) {
+        setErr('Aucun tarif à exporter pour la sélection actuelle.');
+        return;
+      }
+      const slug = filterCentreId
+        ? centres.find((c) => c.id === filterCentreId)?.siteName ?? 'centre'
+        : 'tous-centres';
+      const safeSlug = slug.replace(/[^\w.-]+/g, '_').slice(0, 40);
+      downloadTextFile(
+        `tarifs-analyses-${safeSlug}-${new Date().toISOString().slice(0, 10)}.csv`,
+        tariffsToCsv(exportRows),
+      );
+      setMsg(`${exportRows.length} tarif(s) exporté(s).`);
+    } catch {
+      setErr('Export CSV impossible.');
+    } finally {
+      setBusy(false);
     }
-    const slug = filterCentreId
-      ? centres.find((c) => c.id === filterCentreId)?.siteName ?? 'centre'
-      : 'tous-centres';
-    const safeSlug = slug.replace(/[^\w.-]+/g, '_').slice(0, 40);
-    downloadTextFile(
-      `tarifs-analyses-${safeSlug}-${new Date().toISOString().slice(0, 10)}.csv`,
-      tariffsToCsv(rows),
-    );
-    setMsg(`${rows.length} tarif(s) exporté(s).`);
   }
 
   async function handleExportTemplate(forCentreId?: string) {
@@ -361,16 +400,27 @@ export default function AdminTarifsAnalysesCentresPage() {
     const centre = centres.find((c) => c.id === centreId);
     if (!centre) return;
 
-    setBusy(true);
-    const { prices } = await loadExistingTariffMaps(centreId);
-    setBusy(false);
+    if (activeAnalyses.length === 0) {
+      setErr('Aucune analyse active disponible pour générer le modèle.');
+      return;
+    }
 
-    const safeSlug = centre.siteName.replace(/[^\w.-]+/g, '_').slice(0, 40);
-    downloadTextFile(
-      `modele-tarifs-${safeSlug}.csv`,
-      tariffsTemplateCsv(centre.siteName, activeAnalyses, prices),
-    );
-    setMsg(`Modèle CSV généré pour ${centre.siteName}.`);
+    setBusy(true);
+    try {
+      const { prices } = await loadExistingTariffMaps(centreId);
+      const safeSlug = centre.siteName.replace(/[^\w.-]+/g, '_').slice(0, 40);
+      downloadTextFile(
+        `modele-tarifs-${safeSlug}.csv`,
+        tariffsTemplateCsv(centre.siteName, activeAnalyses, prices),
+      );
+      setMsg(
+        `Modèle CSV généré pour ${centre.siteName} (${activeAnalyses.length} analyses).`,
+      );
+    } catch {
+      setErr('Génération du modèle CSV impossible.');
+    } finally {
+      setBusy(false);
+    }
   }
 
   function openImportModal() {
@@ -556,8 +606,8 @@ export default function AdminTarifsAnalysesCentresPage() {
             <Button
               type="button"
               variant="secondary"
-              disabled={busy || rows.length === 0}
-              onClick={handleExportCsv}
+              disabled={busy || listMeta.total === 0}
+              onClick={() => void handleExportCsv()}
             >
               Exporter CSV
             </Button>
