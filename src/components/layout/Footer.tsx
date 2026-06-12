@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { AlloLaboLogo } from '@/components/brand/AlloLaboLogo';
+import { PRIVACY_POLICY_PATH, TERMS_OF_USE_PATH } from '@/lib/legal';
 
 export function Footer() {
   return (
@@ -33,6 +34,17 @@ export function Footer() {
           </div>
           <div className="flex flex-col gap-2">
             <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+              Légal
+            </p>
+            <Link href={TERMS_OF_USE_PATH} className="hover:text-white">
+              Conditions d’utilisation
+            </Link>
+            <Link href={PRIVACY_POLICY_PATH} className="hover:text-white">
+              Politique de confidentialité
+            </Link>
+          </div>
+          <div className="flex flex-col gap-2">
+            <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
               Espace connecté
             </p>
             <Link href="/office" className="hover:text-white">
@@ -47,8 +59,17 @@ export function Footer() {
           </div>
         </div>
       </div>
-      <div className="border-t border-slate-800/80 py-5 text-center text-xs text-slate-500">
-        © {new Date().getFullYear()} Allo-Labo. Usage interne et patients autorisés.
+      <div className="border-t border-slate-800/80 px-4 py-5 text-center text-xs text-slate-500 sm:px-6 lg:px-8">
+        <p>© {new Date().getFullYear()} Allo-Labo. Tous droits réservés.</p>
+        <p className="mt-2 flex flex-wrap items-center justify-center gap-x-3 gap-y-1">
+          <Link href={TERMS_OF_USE_PATH} className="hover:text-slate-300">
+            Conditions d’utilisation
+          </Link>
+          <span aria-hidden>·</span>
+          <Link href={PRIVACY_POLICY_PATH} className="hover:text-slate-300">
+            Politique de confidentialité
+          </Link>
+        </p>
       </div>
     </footer>
   );

@@ -9,6 +9,8 @@ import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/Card';
 import { apiFetch } from '@/lib/api/client';
 import { getNetworkErrorMessage } from '@/lib/api-errors';
+import { LegalAcceptanceField } from '@/components/legal/LegalAcceptanceField';
+import { PRIVACY_POLICY_PATH } from '@/lib/legal';
 import { useToastFeedback } from '@/hooks/useToastFeedback';
 import {
   maxBirthDateForRegistration,
@@ -122,6 +124,8 @@ function InscriptionPageContent() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPasswords, setShowPasswords] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<RegisterFieldErrors>({});
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [termsError, setTermsError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -183,6 +187,13 @@ function InscriptionPageContent() {
       return;
     }
 
+    if (!acceptedTerms) {
+      setTermsError('Vous devez accepter les conditions d’utilisation et la politique de confidentialité.');
+      setError('Acceptez les conditions pour créer votre compte.');
+      return;
+    }
+    setTermsError(null);
+
     setLoading(true);
     try {
       const res = await apiFetch('/auth/register', {
@@ -243,7 +254,13 @@ function InscriptionPageContent() {
             </li>
           </ul>
         </div>
-        <p className="text-xs text-slate-500">Données traitées conformément aux usages du laboratoire</p>
+        <p className="text-xs text-slate-500">
+          Données traitées conformément à notre{' '}
+          <Link href={PRIVACY_POLICY_PATH} className="text-teal-300 hover:underline">
+            politique de confidentialité
+          </Link>
+          .
+        </p>
       </div>
 
       <div className="flex items-center justify-center px-4 py-8 sm:px-6 lg:py-10">
@@ -409,6 +426,16 @@ function InscriptionPageContent() {
                 />
               </div>
               <p className="text-[11px] text-slate-500">Minimum 8 caractères</p>
+
+              <LegalAcceptanceField
+                id={`${formId}-terms`}
+                checked={acceptedTerms}
+                onChange={(checked) => {
+                  setAcceptedTerms(checked);
+                  if (checked) setTermsError(null);
+                }}
+                error={termsError ?? undefined}
+              />
 
               <Button type="submit" className="w-full" disabled={loading}>
                 {loading ? 'Création…' : 'Créer mon compte'}
