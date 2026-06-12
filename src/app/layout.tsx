@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
 import { AuthProvider } from '@/app/providers';
+import { VisitTracker } from '@/components/analytics/VisitTracker';
 import { ConditionalChrome } from '@/components/layout/ConditionalChrome';
 import { AppToaster } from '@/components/ui/AppToaster';
 import './globals.css';
@@ -40,6 +41,7 @@ export default function RootLayout({
         suppressHydrationWarning
       >
         <AuthProvider>
+          <VisitTracker />
           <ConditionalChrome>{children}</ConditionalChrome>
           <AppToaster />
         </AuthProvider>

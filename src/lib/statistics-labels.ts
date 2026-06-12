@@ -36,6 +36,20 @@ export const ROLE_LABELS: Record<string, string> = {
   operateur: 'Opérateurs',
 };
 
+export const DEVICE_LABELS: Record<string, string> = {
+  desktop: 'Ordinateur',
+  mobile: 'Mobile',
+  tablet: 'Tablette',
+  unknown: 'Autre',
+};
+
+export const DEVICE_COLORS: Record<string, string> = {
+  desktop: '#3b82f6',
+  mobile: '#10b981',
+  tablet: '#8b5cf6',
+  unknown: '#94a3b8',
+};
+
 export const ROLE_COLORS: Record<string, string> = {
   client: '#0d9488',
   technicien: '#8b5cf6',

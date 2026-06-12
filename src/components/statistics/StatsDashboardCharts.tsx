@@ -14,7 +14,10 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
+import { formatDuration } from '@/lib/analytics/format';
 import {
+  DEVICE_COLORS,
+  DEVICE_LABELS,
   ORDER_PIPELINE,
   ORDER_STATUS_COLORS,
   ORDER_STATUS_LABELS,
@@ -506,6 +509,167 @@ export function UsageCompositionChart({
           </p>
         </div>
       </div>
+    </ChartCard>
+  );
+}
+
+export type WebTrafficStats = {
+  totalPageViews?: number;
+  pageViewsLast30Days?: number;
+  uniqueVisitors?: number;
+  uniqueVisitorsLast30Days?: number;
+  byDevice?: Record<string, number>;
+  timeOnSite?: {
+    measuredPageViews?: number;
+    averageDurationSec?: number | null;
+    totalDurationSec?: number;
+  };
+  topPaths?: { path: string; views: number }[];
+};
+
+export function WebTrafficKpi({ traffic }: { traffic: WebTrafficStats }) {
+  const avg = traffic.timeOnSite?.averageDurationSec ?? null;
+  const totalTime = traffic.timeOnSite?.totalDurationSec ?? 0;
+
+  return (
+    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="rounded-2xl border border-sky-200/80 bg-gradient-to-br from-sky-50 to-white p-5 shadow-sm">
+        <p className="text-xs font-semibold uppercase tracking-wide text-sky-700">
+          Pages vues
+        </p>
+        <p className="mt-2 text-3xl font-bold tabular-nums text-sky-950">
+          {traffic.totalPageViews ?? 0}
+        </p>
+        <p className="mt-1 text-xs text-sky-800/80">
+          {traffic.pageViewsLast30Days ?? 0} sur 30 jours
+        </p>
+      </div>
+      <div className="rounded-2xl border border-indigo-200/80 bg-gradient-to-br from-indigo-50 to-white p-5 shadow-sm">
+        <p className="text-xs font-semibold uppercase tracking-wide text-indigo-700">
+          Visiteurs uniques
+        </p>
+        <p className="mt-2 text-3xl font-bold tabular-nums text-indigo-950">
+          {traffic.uniqueVisitors ?? 0}
+        </p>
+        <p className="mt-1 text-xs text-indigo-800/80">
+          {traffic.uniqueVisitorsLast30Days ?? 0} sur 30 jours
+        </p>
+      </div>
+      <div className="rounded-2xl border border-emerald-200/80 bg-gradient-to-br from-emerald-50 to-white p-5 shadow-sm">
+        <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">
+          Temps moyen / page
+        </p>
+        <p className="mt-2 text-3xl font-bold tabular-nums text-emerald-950">
+          {formatDuration(avg)}
+        </p>
+        <p className="mt-1 text-xs text-emerald-800/80">
+          {traffic.timeOnSite?.measuredPageViews ?? 0} pages mesurées
+        </p>
+      </div>
+      <div className="rounded-2xl border border-amber-200/80 bg-gradient-to-br from-amber-50 to-white p-5 shadow-sm">
+        <p className="text-xs font-semibold uppercase tracking-wide text-amber-700">
+          Temps total sur le site
+        </p>
+        <p className="mt-2 text-3xl font-bold tabular-nums text-amber-950">
+          {formatDuration(totalTime)}
+        </p>
+        <p className="mt-1 text-xs text-amber-800/80">Somme des durées enregistrées</p>
+      </div>
+    </div>
+  );
+}
+
+export function WebDeviceDonut({ byDevice }: { byDevice: Record<string, number> }) {
+  const data = Object.entries(byDevice)
+    .filter(([, value]) => value > 0)
+    .map(([key, value]) => ({
+      name: DEVICE_LABELS[key] ?? key,
+      value,
+      fill: DEVICE_COLORS[key] ?? '#94a3b8',
+    }));
+  const total = data.reduce((sum, row) => sum + row.value, 0);
+
+  return (
+    <ChartCard
+      title="Périphériques"
+      subtitle="Répartition des pages vues par type d'appareil"
+    >
+      {total > 0 ? (
+        <div className="h-64">
+          <ResponsiveContainer width="100%" height="100%">
+            <PieChart>
+              <Pie
+                data={data}
+                dataKey="value"
+                nameKey="name"
+                cx="50%"
+                cy="50%"
+                innerRadius={52}
+                outerRadius={80}
+                paddingAngle={2}
+                label={({ name, percent }) =>
+                  `${name} ${((percent ?? 0) * 100).toFixed(0)}%`
+                }
+                labelLine={false}
+              >
+                {data.map((entry) => (
+                  <Cell key={entry.name} fill={entry.fill} />
+                ))}
+              </Pie>
+              <Tooltip content={<CustomTooltip />} />
+              <Legend />
+            </PieChart>
+          </ResponsiveContainer>
+        </div>
+      ) : (
+        <EmptyChart message="Aucune visite enregistrée pour le moment" />
+      )}
+    </ChartCard>
+  );
+}
+
+export function WebTopPagesBar({
+  topPaths,
+}: {
+  topPaths: { path: string; views: number }[];
+}) {
+  const data = topPaths.map((row) => ({
+    path: row.path.length > 28 ? `${row.path.slice(0, 28)}…` : row.path,
+    fullPath: row.path,
+    views: row.views,
+  }));
+
+  return (
+    <ChartCard
+      title="Pages les plus consultées"
+      subtitle="Classement par nombre de vues"
+    >
+      {data.length > 0 ? (
+        <div className="h-64">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={data} layout="vertical" margin={{ left: 8, right: 16 }}>
+              <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+              <XAxis type="number" allowDecimals={false} />
+              <YAxis type="category" dataKey="path" width={120} tick={{ fontSize: 11 }} />
+              <Tooltip
+                content={({ active, payload }) => {
+                  if (!active || !payload?.[0]) return null;
+                  const row = payload[0].payload as { fullPath: string; views: number };
+                  return (
+                    <div className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs shadow-md">
+                      <p className="font-semibold text-slate-900">{row.fullPath}</p>
+                      <p className="mt-1 text-slate-600">{row.views} vues</p>
+                    </div>
+                  );
+                }}
+              />
+              <Bar dataKey="views" fill="#0d9488" radius={[0, 4, 4, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      ) : (
+        <EmptyChart message="Aucune page consultée" />
+      )}
     </ChartCard>
   );
 }

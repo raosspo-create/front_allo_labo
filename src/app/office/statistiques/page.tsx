@@ -12,6 +12,10 @@ import {
   OrderStatusDonut,
   TeamRolesBar,
   UsageCompositionChart,
+  WebDeviceDonut,
+  WebTopPagesBar,
+  WebTrafficKpi,
+  type WebTrafficStats,
 } from '@/components/statistics/StatsDashboardCharts';
 import { buttonClassName } from '@/components/ui/Button';
 import { Card, CardContent } from '@/components/ui/Card';
@@ -40,6 +44,7 @@ type Dashboard = {
   catalogue?: Record<string, number>;
   usage?: Record<string, number | null>;
   orderComposition?: Record<string, number | null>;
+  webTraffic?: WebTrafficStats;
   generatedAt?: string;
 };
 
@@ -150,8 +155,8 @@ export default function StatistiquesPage() {
               Statistiques & Indicateurs
             </h1>
             <p className="mt-2 max-w-xl text-sm text-teal-50/90">
-              Synthèse visuelle des commandes, de l’équipe et du catalogue — graphiques
-              interactifs mis à jour à chaque chargement.
+              Synthèse visuelle des visites vitrine, commandes, équipe et catalogue —
+              graphiques interactifs mis à jour à chaque chargement.
             </p>
           </div>
           <Link
@@ -173,6 +178,19 @@ export default function StatistiquesPage() {
       </div>
 
       <div className="space-y-6">
+        {data.webTraffic ? (
+          <section>
+            <h2 className="mb-3 text-sm font-bold uppercase tracking-wider text-slate-500">
+              Visites du site web
+            </h2>
+            <WebTrafficKpi traffic={data.webTraffic} />
+            <div className="mt-4 grid gap-4 lg:grid-cols-2">
+              <WebDeviceDonut byDevice={data.webTraffic.byDevice ?? {}} />
+              <WebTopPagesBar topPaths={data.webTraffic.topPaths ?? []} />
+            </div>
+          </section>
+        ) : null}
+
         <KpiHero orders={orders} users={users} revenue={revenue} />
 
         <section>

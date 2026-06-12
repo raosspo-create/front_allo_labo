@@ -9,14 +9,15 @@ import { buttonClassName } from '@/components/ui/Button';
 import type { CatalogService, CatalogZone } from '@/lib/api-public';
 
 const fieldSelect =
-  'w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 shadow-sm transition focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/25';
+  'w-full rounded-xl border border-slate-200/90 bg-white px-3 py-2.5 text-sm text-slate-900 shadow-sm transition focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/25 sm:py-3';
 
 type Props = {
   services: CatalogService[];
   zones: CatalogZone[];
+  compact?: boolean;
 };
 
-export function HomeConsultationSearch({ services, zones }: Props) {
+export function HomeConsultationSearch({ services, zones, compact = false }: Props) {
   const router = useRouter();
   const { hydrated, user } = useAuth();
   const [serviceId, setServiceId] = useState('');
@@ -45,20 +46,27 @@ export function HomeConsultationSearch({ services, zones }: Props) {
     router.push(`/connexion?next=${encodeURIComponent(target)}`);
   }
 
-  const popular = services.slice(0, 4);
+  const popular = services.slice(0, compact ? 3 : 4);
 
   return (
-    <div className="mt-5 sm:mt-8">
+    <div className={compact ? '' : 'mt-5 sm:mt-8'}>
       <form
         onSubmit={handleSubmit}
-        className="rounded-2xl border border-slate-200/90 bg-white p-3 shadow-[0_16px_40px_-20px_rgba(15,23,42,0.18)] sm:p-4"
+        className={
+          compact
+            ? 'rounded-2xl border border-white/25 bg-white/95 p-4 shadow-[0_24px_60px_-20px_rgba(0,0,0,0.5)] backdrop-blur-md sm:p-5'
+            : 'rounded-2xl border border-slate-200/90 bg-white p-3 shadow-[0_16px_40px_-20px_rgba(15,23,42,0.18)] sm:p-4'
+        }
         noValidate
       >
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className={compact ? 'grid gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end' : 'grid gap-3 sm:grid-cols-2'}>
           <div>
-            <label htmlFor="home-service" className="mb-1 flex items-center gap-1.5 text-xs font-semibold text-slate-700">
+            <label
+              htmlFor="home-service"
+              className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold text-slate-700"
+            >
               <Stethoscope className="h-3.5 w-3.5 text-teal-700" aria-hidden />
-              Type de consultation
+              Prestation
             </label>
             <select
               id="home-service"
@@ -70,7 +78,7 @@ export function HomeConsultationSearch({ services, zones }: Props) {
               className={fieldSelect}
               required
             >
-              <option value="">Sélectionner une prestation</option>
+              <option value="">Choisir…</option>
               {services.map((s) => (
                 <option key={s.id} value={s.id}>
                   {s.name}
@@ -79,9 +87,12 @@ export function HomeConsultationSearch({ services, zones }: Props) {
             </select>
           </div>
           <div>
-            <label htmlFor="home-zone" className="mb-1 flex items-center gap-1.5 text-xs font-semibold text-slate-700">
+            <label
+              htmlFor="home-zone"
+              className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold text-slate-700"
+            >
               <MapPin className="h-3.5 w-3.5 text-teal-700" aria-hidden />
-              Zone / secteur
+              Zone
             </label>
             <select
               id="home-zone"
@@ -89,7 +100,7 @@ export function HomeConsultationSearch({ services, zones }: Props) {
               onChange={(e) => setZoneId(e.target.value)}
               className={fieldSelect}
             >
-              <option value="">Toutes les zones</option>
+              <option value="">Toutes</option>
               {zones.map((z) => (
                 <option key={z.id} value={z.id}>
                   {z.name}
@@ -98,34 +109,42 @@ export function HomeConsultationSearch({ services, zones }: Props) {
               ))}
             </select>
           </div>
+
+          <button
+            type="submit"
+            className={`${buttonClassName('primary')} gap-2 ${compact ? 'mt-1 w-full py-3 text-sm sm:mt-0 sm:w-auto sm:shrink-0 sm:px-6 sm:text-base' : 'mt-3 w-full py-3 text-base sm:mt-4'}`}
+          >
+            <CalendarCheck className="h-5 w-5 shrink-0" aria-hidden />
+            {compact ? 'Réserver' : 'Réserver une consultation'}
+          </button>
         </div>
 
         {error ? (
-          <p className="mt-2 text-xs font-medium text-red-600" role="alert">
+          <p className="mt-1.5 text-[11px] font-medium text-red-600" role="alert">
             {error}
           </p>
         ) : null}
 
-        <button
-          type="submit"
-          className={`${buttonClassName('primary')} mt-3 w-full gap-2 py-3 text-base sm:mt-4`}
-        >
-          <CalendarCheck className="h-5 w-5 shrink-0" aria-hidden />
-          Réserver une consultation
-        </button>
-
-        <p className="mt-2 text-center text-[11px] leading-snug text-slate-500 sm:text-xs">
-          {hydrated && user
-            ? 'Vous serez redirigé vers le formulaire de commande.'
-            : 'Connexion requise — vous reprendrez la réservation après identification.'}
-        </p>
+        {!compact ? (
+          <p className="mt-2 text-center text-[11px] leading-snug text-slate-500 sm:text-xs">
+            {hydrated && user
+              ? 'Vous serez redirigé vers le formulaire de commande.'
+              : 'Connexion requise — vous reprendrez la réservation après identification.'}
+          </p>
+        ) : null}
       </form>
 
       {popular.length > 0 ? (
-        <div className="mt-3 flex flex-wrap items-center gap-2">
-          <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-            Populaire
-          </span>
+        <div className={`flex flex-wrap items-center gap-2 ${compact ? 'mt-3' : 'mt-3'}`}>
+          {!compact ? (
+            <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+              Populaire
+            </span>
+          ) : (
+            <span className="text-xs font-semibold uppercase tracking-wide text-white/75">
+              Populaire
+            </span>
+          )}
           {popular.map((s) => (
             <button
               key={s.id}
@@ -134,10 +153,14 @@ export function HomeConsultationSearch({ services, zones }: Props) {
                 setServiceId(s.id);
                 setError(null);
               }}
-              className={`rounded-full border px-2.5 py-1 text-xs font-medium transition ${
+              className={`rounded-full border px-3 py-1 text-xs font-medium transition ${
                 serviceId === s.id
-                  ? 'border-teal-300 bg-teal-50 text-teal-900'
-                  : 'border-slate-200 bg-white text-slate-700 hover:border-teal-200 hover:bg-teal-50/60'
+                  ? compact
+                    ? 'border-teal-200 bg-teal-500/90 text-white'
+                    : 'border-teal-300 bg-teal-50 text-teal-900'
+                  : compact
+                    ? 'border-white/25 bg-white/10 text-white hover:bg-white/20'
+                    : 'border-slate-200 bg-white text-slate-700 hover:border-teal-200 hover:bg-teal-50/60'
               }`}
             >
               {s.name}
@@ -146,15 +169,31 @@ export function HomeConsultationSearch({ services, zones }: Props) {
         </div>
       ) : null}
 
-      <p className="mt-3 text-center text-sm text-slate-600 sm:text-left">
-        Pas encore de compte ?{' '}
-        <Link
-          href={`/inscription?next=${encodeURIComponent(buildBookingPath())}`}
-          className="font-semibold text-teal-800 hover:text-teal-900"
-        >
-          Créer un accès
-        </Link>
-      </p>
+      {compact ? (
+        <p className="mt-3 text-center text-xs text-white/85 sm:text-left">
+          Pas de compte ?{' '}
+          <Link
+            href={`/inscription?next=${encodeURIComponent(buildBookingPath())}`}
+            className="font-semibold text-white underline-offset-2 hover:underline"
+          >
+            S’inscrire
+          </Link>
+          {' · '}
+          <Link href="/connexion" className="font-semibold text-white underline-offset-2 hover:underline">
+            Connexion
+          </Link>
+        </p>
+      ) : (
+        <p className="mt-3 text-center text-sm text-slate-600 sm:text-left">
+          Pas encore de compte ?{' '}
+          <Link
+            href={`/inscription?next=${encodeURIComponent(buildBookingPath())}`}
+            className="font-semibold text-teal-800 hover:text-teal-900"
+          >
+            Créer un accès
+          </Link>
+        </p>
+      )}
     </div>
   );
 }
