@@ -20,12 +20,14 @@ export function ConditionalChrome({ children }: { children: React.ReactNode }) {
 
   return (
     <div
-      className={`flex flex-col bg-[var(--marketing-canvas)] ${
-        isHome ? 'h-[100dvh] overflow-hidden' : 'min-h-[100dvh]'
+      className={`flex min-h-[100dvh] flex-col bg-[var(--marketing-canvas)] ${
+        isHome ? 'lg:h-[100dvh] lg:overflow-hidden' : ''
       }`}
     >
       <PublicHeader />
-      <main className="flex min-h-0 flex-1 flex-col">{children}</main>
+      <main className={`flex flex-col ${isHome ? 'flex-1 lg:min-h-0' : 'flex-1'}`}>
+        {children}
+      </main>
       <Footer variant={isHome ? 'home' : 'default'} />
     </div>
   );
